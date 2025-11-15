@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      clean_deploy:
+        description: 'Force clean deployment (stop and remove all containers, keep data)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -294,9 +300,15 @@ jobs:
           SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
           SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
 
-          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << 'ENDSSH'
-          # Configure Postfix as SMTP relay for unattended-upgrades notifications
-          tee /etc/postfix/main.cf > /dev/null << 'EOF'
+          # Store SMTP config in variables for transfer
+          SMTP_SERVER="${{ secrets.SMTP_SERVER }}"
+          SMTP_PORT="${{ secrets.SMTP_PORT }}"
+          SMTP_USER="${{ secrets.SMTP_USER }}"
+          SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}"
+          EMAIL_TO="${{ secrets.EMAIL_TO }}"
+
+          # Create temporary config files locally
+          cat > /tmp/postfix_main.cf << 'EOF'
           # Basic Postfix configuration
           smtpd_banner = $myhostname ESMTP
           biff = no
@@ -305,7 +317,7 @@ jobs:
           compatibility_level = 2
 
           # SMTP relay configuration
-          relayhost = [${{ secrets.SMTP_SERVER }}]:${{ secrets.SMTP_PORT }}
+          relayhost = [SMTP_SERVER_PLACEHOLDER]:SMTP_PORT_PLACEHOLDER
           smtp_use_tls = yes
           smtp_sasl_auth_enable = yes
           smtp_sasl_security_options = noanonymous
@@ -320,22 +332,37 @@ jobs:
           mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
           EOF
 
-          # Create SASL password file
-          tee /etc/postfix/sasl_passwd > /dev/null << 'EOF'
-          [${{ secrets.SMTP_SERVER }}]:${{ secrets.SMTP_PORT }} ${{ secrets.SMTP_USER }}:${{ secrets.SMTP_PASSWORD }}
-          EOF
+          # Replace placeholders
+          sed -i "s/SMTP_SERVER_PLACEHOLDER/${SMTP_SERVER}/g" /tmp/postfix_main.cf
+          sed -i "s/SMTP_PORT_PLACEHOLDER/${SMTP_PORT}/g" /tmp/postfix_main.cf
+
+          # Create SASL password file locally
+          echo "[${SMTP_SERVER}]:${SMTP_PORT} ${SMTP_USER}:${SMTP_PASSWORD}" > /tmp/postfix_sasl_passwd
+
+          # Transfer files to server
+          scp -P "${SERVER_PORT}" /tmp/postfix_main.cf "${SERVER_USER}@${SERVER_HOST}:/tmp/postfix_main.cf"
+          scp -P "${SERVER_PORT}" /tmp/postfix_sasl_passwd "${SERVER_USER}@${SERVER_HOST}:/tmp/postfix_sasl_passwd"
+
+          # Clean up local temp files
+          rm /tmp/postfix_main.cf /tmp/postfix_sasl_passwd
+
+          # Configure on server
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" bash << ENDSSH
+          # Install Postfix configuration
+          mv /tmp/postfix_main.cf /etc/postfix/main.cf
+          mv /tmp/postfix_sasl_passwd /etc/postfix/sasl_passwd
           chmod 600 /etc/postfix/sasl_passwd
           postmap /etc/postfix/sasl_passwd
 
           # Configure root email forwarding to admin
-          echo "root: ${{ secrets.EMAIL_TO }}" | tee /etc/aliases > /dev/null
+          echo "root: ${EMAIL_TO}" > /etc/aliases
           newaliases
 
           # Restart Postfix
           systemctl restart postfix
           systemctl enable postfix
 
-          echo "✓ Email notifications configured - System updates will report errors to ${{ secrets.EMAIL_TO }}"
+          echo "✓ Email notifications configured - System updates will report errors to ${EMAIL_TO}"
           ENDSSH
 
       - name: Create Docker networks

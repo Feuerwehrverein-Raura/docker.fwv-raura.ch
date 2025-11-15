@@ -34,5 +34,4 @@ http:
       chain:
         middlewares:
         - crowdsec-bouncer
-        - default-whitelist
         - default-headers
