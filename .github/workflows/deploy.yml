@@ -152,6 +152,52 @@ jobs:
           chmod 600 ${{ secrets.DEPLOY_PATH }}/.env
           ENDSSH
 
+      - name: Configure email notifications for system updates
+        run: |
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          # Configure Postfix as SMTP relay for unattended-upgrades notifications
+          cat > /etc/postfix/main.cf << 'EOF'
+          # Basic Postfix configuration
+          smtpd_banner = $myhostname ESMTP
+          biff = no
+          append_dot_mydomain = no
+          readme_directory = no
+          compatibility_level = 2
+
+          # SMTP relay configuration
+          relayhost = [${{ secrets.WATCHTOWER_SMTP_SERVER }}]:${{ secrets.WATCHTOWER_SMTP_PORT }}
+          smtp_use_tls = yes
+          smtp_sasl_auth_enable = yes
+          smtp_sasl_security_options = noanonymous
+          smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+          smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+          smtp_tls_security_level = encrypt
+
+          # Network settings
+          inet_interfaces = loopback-only
+          inet_protocols = ipv4
+          mydestination = localhost
+          mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+          EOF
+
+          # Create SASL password file
+          cat > /etc/postfix/sasl_passwd << 'EOF'
+          [${{ secrets.WATCHTOWER_SMTP_SERVER }}]:${{ secrets.WATCHTOWER_SMTP_PORT }} ${{ secrets.WATCHTOWER_SMTP_USER }}:${{ secrets.WATCHTOWER_SMTP_PASSWORD }}
+          EOF
+          chmod 600 /etc/postfix/sasl_passwd
+          postmap /etc/postfix/sasl_passwd
+
+          # Configure root email forwarding to admin
+          echo "root: ${{ secrets.WATCHTOWER_EMAIL_TO }}" > /etc/aliases
+          newaliases
+
+          # Restart Postfix
+          systemctl restart postfix
+          systemctl enable postfix
+
+          echo "✓ Email notifications configured - System updates will report errors to ${{ secrets.WATCHTOWER_EMAIL_TO }}"
+          ENDSSH
+
       - name: Create Docker networks
         run: |
           ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'

@@ -60,7 +60,9 @@ apt-get install -y -qq \
     fail2ban \
     rkhunter \
     lynis \
-    unattended-upgrades
+    unattended-upgrades \
+    mailutils \
+    postfix
 print_success "Pakete installiert"
 
 # Konfiguriere Automatische Sicherheitsupdates
@@ -76,7 +78,19 @@ Unattended-Upgrade::MinimalSteps "true";
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
 Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Mail "root";
+Unattended-Upgrade::MailReport "only-on-error";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
 EOF
+
+# Enable automatic updates
+cat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF
+
 print_success "Automatische Sicherheitsupdates konfiguriert"
 
 # Konfiguriere rkhunter

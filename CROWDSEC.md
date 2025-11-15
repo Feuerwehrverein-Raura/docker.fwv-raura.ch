@@ -307,7 +307,23 @@ sysctl -p
 
 ## Automatische Sicherheitsupdates
 
-Unattended-Upgrades ist konfiguriert für automatische Sicherheitsupdates.
+Unattended-Upgrades ist konfiguriert für automatische Sicherheitsupdates von Debian 13.
+
+### Features
+
+- **Automatische Installation** von Sicherheitsupdates (täglich)
+- **E-Mail-Benachrichtigungen** bei Fehlern an admin@fwv-raura.ch
+- **Automatisches Cleanup** alter Kernel-Pakete
+- **Entfernung** ungenutzter Abhängigkeiten
+- **Kein automatischer Reboot** (manuell kontrolliert)
+
+### Konfiguration
+
+Die Konfiguration erfolgt automatisch beim Deployment:
+- Postfix als SMTP-Relay konfiguriert
+- Root-E-Mails werden an admin@fwv-raura.ch weitergeleitet
+- Updates laufen täglich
+- E-Mails nur bei Fehlern (`only-on-error`)
 
 ### Status prüfen
 
@@ -318,13 +334,50 @@ systemctl status unattended-upgrades
 ### Logs anzeigen
 
 ```bash
+# Unattended-Upgrades Logs
 cat /var/log/unattended-upgrades/unattended-upgrades.log
+
+# Letztes Update
+tail -n 50 /var/log/unattended-upgrades/unattended-upgrades.log
+
+# Dpkg Log (alle Paket-Installationen)
+cat /var/log/dpkg.log
 ```
 
-### Konfiguration
+### Manuelles Update testen
 
 ```bash
+# Dry-run (zeigt was passieren würde)
+unattended-upgrade --dry-run --debug
+
+# Sofort Updates durchführen
+unattended-upgrade --debug
+```
+
+### E-Mail Test
+
+```bash
+# Teste ob E-Mail-Versand funktioniert
+echo "Test email from docker.fwv-raura.ch" | mail -s "Test Subject" admin@fwv-raura.ch
+
+# Postfix Queue prüfen
+mailq
+
+# Postfix Logs
+tail -f /var/log/mail.log
+```
+
+### Konfigurationsdateien
+
+```bash
+# Haupt-Konfiguration
 nano /etc/apt/apt.conf.d/50unattended-upgrades
+
+# Auto-Update Einstellungen
+nano /etc/apt/apt.conf.d/20auto-upgrades
+
+# Postfix SMTP Relay
+nano /etc/postfix/main.cf
 ```
 
 ## Fail2Ban
