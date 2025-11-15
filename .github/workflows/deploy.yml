@@ -4,7 +4,13 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Ermöglicht manuelles Triggern
+  workflow_dispatch:
+    inputs:
+      force_clean_deploy:
+        description: 'Force clean deployment (stop and remove all containers, keep data)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -23,6 +29,33 @@ jobs:
           # Trim whitespace from SERVER_HOST secret
           SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
           ssh-keyscan -H "${SERVER_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Clean deployment (remove all containers, keep data)
+        if: github.event.inputs.force_clean_deploy == 'true' || contains(github.event.head_commit.message, '[clean-deploy]') || contains(github.event.head_commit.message, '[force-redeploy]')
+        run: |
+          echo "🧹 Starting clean deployment - removing all containers while preserving data..."
+
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
+          cd "${DEPLOY_PATH}" || { echo "⚠ DEPLOY_PATH not found - skipping clean"; exit 0; }
+
+          if [ -f docker-compose.yml ]; then
+            echo "🛑 Stopping all containers..."
+            docker-compose down --remove-orphans
+
+            echo "🗑️ Removing unused Docker resources..."
+            docker system prune -f
+
+            echo "✅ Clean deployment preparation complete - all containers removed, data preserved"
+          else
+            echo "⚠ No docker-compose.yml found - skipping clean"
+          fi
+          ENDSSH
 
       - name: Check server and service health
         id: check_setup
