@@ -50,15 +50,32 @@ Dieses Repository enthält die komplette Docker-Infrastruktur für den Server `d
 
 ### 1. Server Vorbereitung
 
+⚠️ **WICHTIG**: Dies ist nur für die **erste Einrichtung** nötig! Danach übernimmt GitHub Actions automatisch alle Deployments via SSH/rsync - du musst **nie wieder** auf dem Server git pullen!
+
 SSH zum Server verbinden und das Setup-Script ausführen:
 
+**Option A: Via git clone (einfacher)**
 ```bash
-# Auf dem Server
-cd /root
+# Auf dem Server (einmalig!)
+cd /tmp
 git clone https://github.com/Feuerwehrverein-Raura/docker.fwv-raura.ch.git
 cd docker.fwv-raura.ch
 chmod +x setup-server.sh
 sudo ./setup-server.sh
+
+# Optional: Aufräumen (wird nicht mehr gebraucht)
+cd /tmp && rm -rf docker.fwv-raura.ch
+```
+
+**Option B: setup-server.sh direkt hochladen**
+```bash
+# Lokal
+scp setup-server.sh root@docker.fwv-raura.ch:/tmp/
+
+# Auf dem Server
+ssh root@docker.fwv-raura.ch
+chmod +x /tmp/setup-server.sh
+sudo /tmp/setup-server.sh
 ```
 
 Das Script installiert (für Debian 13):
@@ -67,6 +84,8 @@ Das Script installiert (für Debian 13):
 - Fail2Ban
 - Erstellt `/opt/docker` Verzeichnis
 - Erstellt Docker Netzwerke (proxy, nextcloud, authentik)
+
+💡 **Nach diesem Schritt**: Alle weiteren Updates werden automatisch von GitHub Actions via SSH deployed!
 
 ### 2. DNS Einträge setzen
 
