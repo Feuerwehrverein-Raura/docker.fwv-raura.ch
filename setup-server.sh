@@ -166,6 +166,7 @@ print_success "Fail2Ban aktiviert"
 
 # Erstelle acme.json für Traefik mit korrekten Rechten
 print_info "Bereite Traefik acme.json vor..."
+mkdir -p "$DEPLOY_PATH/traefik"
 touch "$DEPLOY_PATH/traefik/acme.json"
 chmod 600 "$DEPLOY_PATH/traefik/acme.json"
 print_success "acme.json erstellt"
