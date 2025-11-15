@@ -1,0 +1,95 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Ermöglicht manuelles Triggern
+
+jobs:
+  deploy:
+    name: Deploy to docker.fwv-raura.ch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment structure
+        run: |
+          mkdir -p n8n/data
+          mkdir -p nextcloud/db
+          mkdir -p nextcloud/html
+          mkdir -p nextcloud/data
+          mkdir -p nextcloud/config
+          mkdir -p nextcloud/apps
+
+      - name: Deploy files to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -p ${{ secrets.SERVER_PORT }}" \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.env' \
+            --exclude 'traefik/acme.json' \
+            --exclude 'n8n/data/*' \
+            --exclude 'nextcloud/db/*' \
+            --exclude 'nextcloud/html/*' \
+            --exclude 'nextcloud/data/*' \
+            --exclude 'nextcloud/config/*' \
+            --exclude 'nextcloud/apps/*' \
+            --exclude 'README.md' \
+            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Configure acme.json permissions
+        run: |
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          cd ${{ secrets.DEPLOY_PATH }}
+          if [ ! -f traefik/acme.json ]; then
+            touch traefik/acme.json
+          fi
+          chmod 600 traefik/acme.json
+          ENDSSH
+
+      - name: Create Docker networks
+        run: |
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          docker network create proxy 2>/dev/null || true
+          docker network create nextcloud 2>/dev/null || true
+          ENDSSH
+
+      - name: Pull and restart containers
+        run: |
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          cd ${{ secrets.DEPLOY_PATH }}
+          docker-compose pull
+          docker-compose up -d --remove-orphans
+          docker-compose ps
+          ENDSSH
+
+      - name: Show deployment info
+        run: |
+          echo "✅ Deployment erfolgreich!"
+          echo ""
+          echo "Services:"
+          echo "  - Traefik: https://traefik.fwv-raura.ch"
+          echo "  - n8n: https://n8n.fwv-raura.ch"
+          echo "  - Nextcloud: https://cloud.fwv-raura.ch"
+
+      - name: Check container health
+        run: |
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          cd ${{ secrets.DEPLOY_PATH }}
+          echo "Container Status:"
+          docker-compose ps
+          echo ""
+          echo "Running Containers:"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          ENDSSH

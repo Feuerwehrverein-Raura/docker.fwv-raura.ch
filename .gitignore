@@ -1,0 +1,24 @@
+# Environment
+.env
+
+# Traefik
+traefik/acme.json
+
+# Data directories
+n8n/data/
+nextcloud/db/
+nextcloud/html/
+nextcloud/data/
+nextcloud/config/
+nextcloud/apps/
+
+# Mailcow
+mailcow-dockerized/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~

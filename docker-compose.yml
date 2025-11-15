@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+      - ./traefik/config.yml:/config.yml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=${DOMAIN_BASE}"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAIN_BASE}"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - proxy
+    environment:
+      - N8N_HOST=${N8N_DOMAIN}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${N8N_DOMAIN}/
+      - GENERIC_TIMEZONE=${TIMEZONE}
+    volumes:
+      - ./n8n/data:/home/node/.n8n
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.entrypoints=http"
+      - "traefik.http.routers.n8n.rule=Host(`${N8N_DOMAIN}`)"
+      - "traefik.http.middlewares.n8n-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.n8n.middlewares=n8n-https-redirect"
+      - "traefik.http.routers.n8n-secure.entrypoints=https"
+      - "traefik.http.routers.n8n-secure.rule=Host(`${N8N_DOMAIN}`)"
+      - "traefik.http.routers.n8n-secure.tls=true"
+      - "traefik.http.routers.n8n-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.n8n-secure.service=n8n"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+      - "traefik.docker.network=proxy"
+
+  nextcloud-db:
+    image: mariadb:10.11
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    networks:
+      - nextcloud
+    volumes:
+      - ./nextcloud/db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASSWORD}
+      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+
+  nextcloud-redis:
+    image: redis:alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    networks:
+      - nextcloud
+
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+    networks:
+      - proxy
+      - nextcloud
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    volumes:
+      - ./nextcloud/html:/var/www/html
+      - ./nextcloud/data:/var/www/html/data
+      - ./nextcloud/config:/var/www/html/config
+      - ./nextcloud/apps:/var/www/html/custom_apps
+    environment:
+      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=nextcloud-db
+      - REDIS_HOST=nextcloud-redis
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_DOMAIN}
+      - OVERWRITEPROTOCOL=https
+      - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
+      - OVERWRITEHOST=${NEXTCLOUD_DOMAIN}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.entrypoints=http"
+      - "traefik.http.routers.nextcloud.rule=Host(`${NEXTCLOUD_DOMAIN}`)"
+      - "traefik.http.middlewares.nextcloud-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.nextcloud.middlewares=nextcloud-https-redirect"
+      - "traefik.http.routers.nextcloud-secure.entrypoints=https"
+      - "traefik.http.routers.nextcloud-secure.rule=Host(`${NEXTCLOUD_DOMAIN}`)"
+      - "traefik.http.routers.nextcloud-secure.tls=true"
+      - "traefik.http.routers.nextcloud-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.nextcloud-secure.service=nextcloud"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.nextcloud-secure.middlewares=nextcloud-caldav,nextcloud-headers"
+      - "traefik.http.middlewares.nextcloud-caldav.redirectregex.permanent=true"
+      - "traefik.http.middlewares.nextcloud-caldav.redirectregex.regex=^https://(.*)/.well-known/(card|cal)dav"
+      - "traefik.http.middlewares.nextcloud-caldav.redirectregex.replacement=https://$${1}/remote.php/dav/"
+      - "traefik.http.middlewares.nextcloud-headers.headers.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.middlewares.nextcloud-headers.headers.customResponseHeaders.Strict-Transport-Security=15552000"
+
+networks:
+  proxy:
+    external: false
+  nextcloud:
+    external: false
