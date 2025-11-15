@@ -22,6 +22,34 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Check if server setup is needed
+        id: check_setup
+        run: |
+          if ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'command -v docker &> /dev/null'; then
+            echo "setup_needed=false" >> $GITHUB_OUTPUT
+            echo "✓ Docker is already installed on server"
+          else
+            echo "setup_needed=true" >> $GITHUB_OUTPUT
+            echo "⚠ Docker not found - server setup will be performed"
+          fi
+
+      - name: Run server setup (if needed)
+        if: steps.check_setup.outputs.setup_needed == 'true'
+        run: |
+          echo "🚀 Running initial server setup..."
+
+          # Upload setup script
+          scp -P ${{ secrets.SERVER_PORT }} setup-server.sh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/setup-server.sh
+
+          # Run setup script
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          chmod +x /tmp/setup-server.sh
+          /tmp/setup-server.sh
+          rm /tmp/setup-server.sh
+          ENDSSH
+
+          echo "✓ Server setup completed successfully"
+
       - name: Create deployment structure
         run: |
           mkdir -p n8n/data

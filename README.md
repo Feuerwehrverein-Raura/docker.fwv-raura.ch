@@ -50,11 +50,23 @@ Dieses Repository enthält die komplette Docker-Infrastruktur für den Server `d
 
 ### 1. Server Vorbereitung
 
-⚠️ **WICHTIG**: Dies ist nur für die **erste Einrichtung** nötig! Danach übernimmt GitHub Actions automatisch alle Deployments via SSH/rsync - du musst **nie wieder** auf dem Server git pullen!
+🎉 **AUTOMATISCH!** GitHub Actions richtet den Server beim ersten Deployment automatisch ein!
 
-SSH zum Server verbinden und das Setup-Script ausführen:
+Der Workflow prüft ob Docker installiert ist und führt bei Bedarf automatisch aus:
+- Docker & Docker Compose Installation
+- UFW Firewall (konfiguriert für HTTP/HTTPS/SSH)
+- Fail2Ban
+- Erstellt `/opt/docker` Verzeichnis
+- Erstellt Docker Netzwerke (proxy, nextcloud, authentik)
 
-**Option A: Via git clone (einfacher)**
+**Du musst NICHTS manuell auf dem Server machen!** Einfach GitHub Secrets setzen und auf `main` pushen → Fertig! 🚀
+
+<details>
+<summary>💡 Alternative: Manuelles Server-Setup (falls gewünscht)</summary>
+
+Falls du den Server trotzdem manuell einrichten möchtest:
+
+**Option A: Via git clone**
 ```bash
 # Auf dem Server (einmalig!)
 cd /tmp
@@ -63,7 +75,7 @@ cd docker.fwv-raura.ch
 chmod +x setup-server.sh
 sudo ./setup-server.sh
 
-# Optional: Aufräumen (wird nicht mehr gebraucht)
+# Aufräumen
 cd /tmp && rm -rf docker.fwv-raura.ch
 ```
 
@@ -78,14 +90,7 @@ chmod +x /tmp/setup-server.sh
 sudo /tmp/setup-server.sh
 ```
 
-Das Script installiert (für Debian 13):
-- Docker & Docker Compose
-- UFW Firewall (konfiguriert für HTTP/HTTPS/SSH)
-- Fail2Ban
-- Erstellt `/opt/docker` Verzeichnis
-- Erstellt Docker Netzwerke (proxy, nextcloud, authentik)
-
-💡 **Nach diesem Schritt**: Alle weiteren Updates werden automatisch von GitHub Actions via SSH deployed!
+</details>
 
 ### 2. DNS Einträge setzen
 
@@ -189,14 +194,23 @@ Bei jedem Push auf `main` Branch:
 
 1. ✓ Code wird ausgecheckt
 2. ✓ SSH Verbindung zum Server wird aufgebaut
-3. ✓ Deployment-Struktur wird erstellt
-4. ✓ Dateien werden via rsync zum Server übertragen
-5. ✓ `.env` Datei wird aus GitHub Secrets erstellt
-6. ✓ `acme.json` Berechtigungen werden gesetzt
-7. ✓ Docker Netzwerke werden erstellt
-8. ✓ Docker Images werden gepullt
-9. ✓ Container werden neu gestartet
-10. ✓ Health Check wird durchgeführt
+3. ✓ **Server-Setup wird geprüft** (falls Docker nicht installiert → automatisches Setup!)
+4. ✓ Deployment-Struktur wird erstellt
+5. ✓ Dateien werden via rsync zum Server übertragen
+6. ✓ `.env` Datei wird aus GitHub Secrets erstellt
+7. ✓ `acme.json` Berechtigungen werden gesetzt
+8. ✓ Docker Netzwerke werden erstellt
+9. ✓ Docker Images werden gepullt
+10. ✓ Container werden neu gestartet
+11. ✓ Health Check wird durchgeführt
+
+**Beim allerersten Deployment** auf einem frischen Server:
+- GitHub Actions erkennt, dass Docker fehlt
+- Lädt `setup-server.sh` hoch und führt es aus
+- Installiert Docker, Firewall, Fail2Ban
+- Fährt dann mit normalem Deployment fort
+
+**Kein manueller Server-Zugriff nötig!** 🎉
 
 ### Deployment triggern
 
