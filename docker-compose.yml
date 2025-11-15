@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   traefik:
     image: traefik:v2.10
@@ -118,8 +116,10 @@ services:
       - proxy
       - nextcloud
     depends_on:
-      - nextcloud-db
-      - nextcloud-redis
+      nextcloud-db:
+        condition: service_healthy
+      nextcloud-redis:
+        condition: service_healthy
     volumes:
       - ./nextcloud/html:/var/www/html
       - ./nextcloud/data:/var/www/html/data
@@ -259,8 +259,10 @@ services:
       - ./authentik/media:/media
       - ./authentik/custom-templates:/templates
     depends_on:
-      - authentik-postgresql
-      - authentik-redis
+      authentik-postgresql:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/-/health/live/')\""]
       interval: 30s
@@ -311,8 +313,10 @@ services:
       - ./authentik/certs:/certs
       - ./authentik/custom-templates:/templates
     depends_on:
-      - authentik-postgresql
-      - authentik-redis
+      authentik-postgresql:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "ak healthcheck || exit 1"]
       interval: 30s
@@ -356,7 +360,8 @@ services:
       - CROWDSEC_AGENT_HOST=crowdsec:8080
       - GIN_MODE=release
     depends_on:
-      - crowdsec
+      crowdsec:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "timeout 5 sh -c 'cat < /dev/null > /dev/tcp/127.0.0.1/8080' || exit 1"]
       interval: 30s
