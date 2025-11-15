@@ -38,14 +38,13 @@ services:
       - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
       - "traefik.http.routers.traefik-secure.tls=true"
       - "traefik.http.routers.traefik-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-secure.tls.domains[0].main=${DOMAIN_BASE}"
-      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAIN_BASE}"
       - "traefik.http.routers.traefik-secure.service=api@internal"
 
   n8n:
     image: n8nio/n8n:latest
     container_name: n8n
     restart: unless-stopped
+    user: "1000:1000"
     networks:
       - proxy
     environment:
