@@ -277,13 +277,13 @@ jobs:
           # CrowdSec
           CROWDSEC_BOUNCER_KEY_TRAEFIK=${{ secrets.CROWDSEC_BOUNCER_KEY_TRAEFIK }}
 
-          # Watchtower
-          WATCHTOWER_EMAIL_FROM=${{ secrets.WATCHTOWER_EMAIL_FROM }}
-          WATCHTOWER_EMAIL_TO=${{ secrets.WATCHTOWER_EMAIL_TO }}
-          WATCHTOWER_SMTP_SERVER=${{ secrets.WATCHTOWER_SMTP_SERVER }}
-          WATCHTOWER_SMTP_PORT=${{ secrets.WATCHTOWER_SMTP_PORT }}
-          WATCHTOWER_SMTP_USER=${{ secrets.WATCHTOWER_SMTP_USER }}
-          WATCHTOWER_SMTP_PASSWORD=${{ secrets.WATCHTOWER_SMTP_PASSWORD }}
+          # SMTP/Email Configuration (used by Watchtower, Postfix, and other services)
+          EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+          EMAIL_TO=${{ secrets.EMAIL_TO }}
+          SMTP_SERVER=${{ secrets.SMTP_SERVER }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           EOF
           chmod 600 "${DEPLOY_PATH}/.env"
           ENDSSH
@@ -306,7 +306,7 @@ jobs:
           compatibility_level = 2
 
           # SMTP relay configuration
-          relayhost = [${{ secrets.WATCHTOWER_SMTP_SERVER }}]:${{ secrets.WATCHTOWER_SMTP_PORT }}
+          relayhost = [${{ secrets.SMTP_SERVER }}]:${{ secrets.SMTP_PORT }}
           smtp_use_tls = yes
           smtp_sasl_auth_enable = yes
           smtp_sasl_security_options = noanonymous
@@ -323,20 +323,20 @@ jobs:
 
           # Create SASL password file
           tee /etc/postfix/sasl_passwd > /dev/null << 'EOF'
-          [${{ secrets.WATCHTOWER_SMTP_SERVER }}]:${{ secrets.WATCHTOWER_SMTP_PORT }} ${{ secrets.WATCHTOWER_SMTP_USER }}:${{ secrets.WATCHTOWER_SMTP_PASSWORD }}
+          [${{ secrets.SMTP_SERVER }}]:${{ secrets.SMTP_PORT }} ${{ secrets.SMTP_USER }}:${{ secrets.SMTP_PASSWORD }}
           EOF
           chmod 600 /etc/postfix/sasl_passwd
           postmap /etc/postfix/sasl_passwd
 
           # Configure root email forwarding to admin
-          echo "root: ${{ secrets.WATCHTOWER_EMAIL_TO }}" | tee /etc/aliases > /dev/null
+          echo "root: ${{ secrets.EMAIL_TO }}" | tee /etc/aliases > /dev/null
           newaliases
 
           # Restart Postfix
           systemctl restart postfix
           systemctl enable postfix
 
-          echo "✓ Email notifications configured - System updates will report errors to ${{ secrets.WATCHTOWER_EMAIL_TO }}"
+          echo "✓ Email notifications configured - System updates will report errors to ${{ secrets.EMAIL_TO }}"
           ENDSSH
 
       - name: Create Docker networks
