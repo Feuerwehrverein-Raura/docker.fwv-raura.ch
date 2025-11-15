@@ -199,6 +199,24 @@ jobs:
             --exclude 'AUTHENTIK-INTEGRATION.md' \
             ./ "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/"
 
+      - name: Fix directory permissions
+        run: |
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
+          cd "${DEPLOY_PATH}" || { echo "Error: DEPLOY_PATH not found"; exit 1; }
+
+          # Fix n8n permissions (needs to be writable by UID 1000)
+          chown -R 1000:1000 n8n/data
+          chmod -R 755 n8n/data
+
+          echo "✓ Directory permissions fixed"
+          ENDSSH
+
       - name: Configure acme.json permissions
         run: |
           # Trim whitespace from secrets
