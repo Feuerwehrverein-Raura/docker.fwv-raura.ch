@@ -177,7 +177,8 @@ Gehe zu: Repository → Settings → Secrets and variables → Actions → New r
 Diese Secrets werden von mehreren Services verwendet:
 - **Watchtower**: Container-Update-Benachrichtigungen
 - **Postfix**: System-Update-Benachrichtigungen (unattended-upgrades)
-- **Zukünftige Services**: Nextcloud, n8n, Authentik können diese auch nutzen
+- **Authentik**: Passwort-Resets, Account-Verifizierung, Benachrichtigungen
+- **Zukünftige Services**: Nextcloud, n8n können diese auch nutzen
 
 | Secret Name | Beispiel-Wert | Beschreibung |
 |------------|---------------|--------------|
