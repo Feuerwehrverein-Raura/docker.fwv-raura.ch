@@ -97,7 +97,8 @@ jobs:
       - name: Configure acme.json permissions
         run: |
           ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cd ${{ secrets.DEPLOY_PATH }}
+          cd ${{ secrets.DEPLOY_PATH }} || { echo "Error: DEPLOY_PATH not found"; exit 1; }
+          mkdir -p traefik
           if [ ! -f traefik/acme.json ]; then
             touch traefik/acme.json
           fi
@@ -156,7 +157,7 @@ jobs:
         run: |
           ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
           # Configure Postfix as SMTP relay for unattended-upgrades notifications
-          cat > /etc/postfix/main.cf << 'EOF'
+          tee /etc/postfix/main.cf > /dev/null << 'EOF'
           # Basic Postfix configuration
           smtpd_banner = $myhostname ESMTP
           biff = no
@@ -181,14 +182,14 @@ jobs:
           EOF
 
           # Create SASL password file
-          cat > /etc/postfix/sasl_passwd << 'EOF'
+          tee /etc/postfix/sasl_passwd > /dev/null << 'EOF'
           [${{ secrets.WATCHTOWER_SMTP_SERVER }}]:${{ secrets.WATCHTOWER_SMTP_PORT }} ${{ secrets.WATCHTOWER_SMTP_USER }}:${{ secrets.WATCHTOWER_SMTP_PASSWORD }}
           EOF
           chmod 600 /etc/postfix/sasl_passwd
           postmap /etc/postfix/sasl_passwd
 
           # Configure root email forwarding to admin
-          echo "root: ${{ secrets.WATCHTOWER_EMAIL_TO }}" > /etc/aliases
+          echo "root: ${{ secrets.WATCHTOWER_EMAIL_TO }}" | tee /etc/aliases > /dev/null
           newaliases
 
           # Restart Postfix
@@ -209,7 +210,7 @@ jobs:
       - name: Pull and restart containers
         run: |
           ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cd ${{ secrets.DEPLOY_PATH }}
+          cd ${{ secrets.DEPLOY_PATH }} || { echo "Error: DEPLOY_PATH not found"; exit 1; }
           docker-compose pull
           docker-compose up -d --remove-orphans
           docker-compose ps
@@ -229,7 +230,7 @@ jobs:
       - name: Check container health
         run: |
           ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cd ${{ secrets.DEPLOY_PATH }}
+          cd ${{ secrets.DEPLOY_PATH }} || { echo "Error: DEPLOY_PATH not found"; exit 1; }
           echo "Container Status:"
           docker-compose ps
           echo ""
