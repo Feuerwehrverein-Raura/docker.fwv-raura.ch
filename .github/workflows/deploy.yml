@@ -236,14 +236,8 @@ jobs:
 
       - name: Create .env file from secrets
         run: |
-          # Trim whitespace from secrets
-          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
-          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
-          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
-          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
-
-          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
-          cat > "${DEPLOY_PATH}/.env" << 'EOF'
+          # Create .env file locally to avoid shell expansion issues with special characters
+          cat > .env << 'EOF'
           # Domain Configuration
           DOMAIN_BASE=fwv-raura.ch
           TRAEFIK_DOMAIN=traefik.fwv-raura.ch
@@ -255,38 +249,50 @@ jobs:
 
           # Timezone
           TIMEZONE=Europe/Zurich
-
-          # Traefik
-          TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}
-
-          # Nextcloud Database
-          NEXTCLOUD_DB_ROOT_PASSWORD=${{ secrets.NEXTCLOUD_DB_ROOT_PASSWORD }}
-          NEXTCLOUD_DB_PASSWORD=${{ secrets.NEXTCLOUD_DB_PASSWORD }}
-
-          # Nextcloud Admin
-          NEXTCLOUD_ADMIN_USER=${{ secrets.NEXTCLOUD_ADMIN_USER }}
-          NEXTCLOUD_ADMIN_PASSWORD=${{ secrets.NEXTCLOUD_ADMIN_PASSWORD }}
-
-          # Authentik
-          AUTHENTIK_SECRET_KEY=${{ secrets.AUTHENTIK_SECRET_KEY }}
-          AUTHENTIK_ERROR_REPORTING=false
-          AUTHENTIK_POSTGRESQL_PASSWORD=${{ secrets.AUTHENTIK_POSTGRESQL_PASSWORD }}
-          AUTHENTIK_POSTGRESQL_USER=authentik
-          AUTHENTIK_POSTGRESQL_NAME=authentik
-
-          # CrowdSec
-          CROWDSEC_BOUNCER_KEY_TRAEFIK=${{ secrets.CROWDSEC_BOUNCER_KEY_TRAEFIK }}
-
-          # SMTP/Email Configuration (used by Watchtower, Postfix, and other services)
-          EMAIL_FROM=${{ secrets.EMAIL_FROM }}
-          EMAIL_TO=${{ secrets.EMAIL_TO }}
-          SMTP_SERVER=${{ secrets.SMTP_SERVER }}
-          SMTP_PORT=${{ secrets.SMTP_PORT }}
-          SMTP_USER=${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           EOF
-          chmod 600 "${DEPLOY_PATH}/.env"
-          ENDSSH
+
+          # Append secrets (this prevents shell expansion of $ characters)
+          echo "TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}" >> .env
+          echo "" >> .env
+          echo "# Nextcloud Database" >> .env
+          echo "NEXTCLOUD_DB_ROOT_PASSWORD=${{ secrets.NEXTCLOUD_DB_ROOT_PASSWORD }}" >> .env
+          echo "NEXTCLOUD_DB_PASSWORD=${{ secrets.NEXTCLOUD_DB_PASSWORD }}" >> .env
+          echo "" >> .env
+          echo "# Nextcloud Admin" >> .env
+          echo "NEXTCLOUD_ADMIN_USER=${{ secrets.NEXTCLOUD_ADMIN_USER }}" >> .env
+          echo "NEXTCLOUD_ADMIN_PASSWORD=${{ secrets.NEXTCLOUD_ADMIN_PASSWORD }}" >> .env
+          echo "" >> .env
+          echo "# Authentik" >> .env
+          echo "AUTHENTIK_SECRET_KEY=${{ secrets.AUTHENTIK_SECRET_KEY }}" >> .env
+          echo "AUTHENTIK_ERROR_REPORTING=false" >> .env
+          echo "AUTHENTIK_POSTGRESQL_PASSWORD=${{ secrets.AUTHENTIK_POSTGRESQL_PASSWORD }}" >> .env
+          echo "AUTHENTIK_POSTGRESQL_USER=authentik" >> .env
+          echo "AUTHENTIK_POSTGRESQL_NAME=authentik" >> .env
+          echo "" >> .env
+          echo "# CrowdSec" >> .env
+          echo "CROWDSEC_BOUNCER_KEY_TRAEFIK=${{ secrets.CROWDSEC_BOUNCER_KEY_TRAEFIK }}" >> .env
+          echo "" >> .env
+          echo "# SMTP/Email Configuration (used by Watchtower, Postfix, Authentik, and other services)" >> .env
+          echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
+          echo "EMAIL_TO=${{ secrets.EMAIL_TO }}" >> .env
+          echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> .env
+          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+          echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
+
+          # Upload .env file to server
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          scp -P "${SERVER_PORT}" .env "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/.env"
+
+          # Set correct permissions
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "chmod 600 ${DEPLOY_PATH}/.env"
+
+          # Clean up local .env
+          rm .env
 
       - name: Configure email notifications for system updates
         run: |
