@@ -175,6 +175,7 @@ print_success "acme.json erstellt"
 print_info "Erstelle Docker Netzwerke..."
 docker network create proxy 2>/dev/null || print_info "Netzwerk 'proxy' existiert bereits"
 docker network create nextcloud 2>/dev/null || print_info "Netzwerk 'nextcloud' existiert bereits"
+docker network create authentik 2>/dev/null || print_info "Netzwerk 'authentik' existiert bereits"
 print_success "Docker Netzwerke bereit"
 
 # Zeige installierte Versionen

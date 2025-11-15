@@ -395,11 +395,11 @@ services:
 
 networks:
   proxy:
-    external: false
+    external: true
   nextcloud:
-    external: false
+    external: true
   authentik:
-    external: false
+    external: true
 
 volumes:
   traefik-logs:

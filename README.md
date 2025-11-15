@@ -316,7 +316,8 @@ Nach erfolgreichem Deployment sind die Services erreichbar unter:
   - Docker Container Management UI
 
 - **Authentik**: https://auth.fwv-raura.ch
-  - Standard-Login: `akadmin` / Initialisierungs-Token wird beim ersten Start generiert
+  - Standard-Login: `akadmin` (ohne Passwort bei Erstinstallation)
+  - Bei Ersteinrichtung: Verwende die "Password Recovery" Funktion auf der Login-Seite, um ein Passwort für `akadmin` zu setzen
   - Identity Provider für SSO
   - Nach Installation: Admin-Passwort ändern und Nutzer anlegen!
 

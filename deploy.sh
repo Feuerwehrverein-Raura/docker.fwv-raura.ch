@@ -105,7 +105,7 @@ print_success "Dateien synchronisiert"
 # Erstelle/Update acme.json mit korrekten Rechten
 print_info "Konfiguriere Traefik acme.json..."
 ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" << 'ENDSSH'
-cd /opt/docker-services
+cd /opt/docker
 if [ ! -f traefik/acme.json ]; then
     touch traefik/acme.json
 fi
@@ -143,7 +143,7 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_info "Starte Container..."
     ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" << 'ENDSSH'
-cd /opt/docker-services
+cd /opt/docker
 docker-compose pull
 docker-compose up -d
 docker-compose ps
