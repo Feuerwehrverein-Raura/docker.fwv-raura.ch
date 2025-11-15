@@ -257,6 +257,46 @@ git push origin main
 
 GitHub Actions startet automatisch und deployed alle Änderungen zum Server.
 
+### Clean Deployment (Container neu aufsetzen)
+
+Manchmal ist es nötig, alle Container komplett zu entfernen und neu zu deployen, z.B. bei Problemen oder zum Aufräumen. Die Clean Deployment Option entfernt alle Container, behält aber alle Daten (Datenbanken, Konfigurationen, etc.)!
+
+**Option 1: Manuelle Auslösung via GitHub Actions UI**
+1. Gehe zu: Repository → Actions → "Deploy to Server"
+2. Klicke auf "Run workflow"
+3. Wähle den `main` Branch
+4. Aktiviere die Checkbox "Force clean deployment (stop and remove all containers, keep data)"
+5. Klicke auf "Run workflow"
+
+**Option 2: Automatisch via Commit Message**
+
+Füge einen dieser Tags in deine Commit Message ein:
+```bash
+git commit -m "Fix Container-Konfiguration [clean-deploy]"
+git push origin main
+```
+
+Oder:
+```bash
+git commit -m "Rebuild all services [force-redeploy]"
+git push origin main
+```
+
+**Was passiert beim Clean Deployment:**
+- 🛑 Alle Container werden gestoppt
+- 🗑️ Alle Container werden entfernt (`docker-compose down --remove-orphans`)
+- 💾 **ALLE DATEN BLEIBEN ERHALTEN** (Volumes werden NICHT gelöscht)
+- 🧹 Docker System Prune wird ausgeführt (entfernt ungenutzte Images/Networks)
+- 🚀 Normales Deployment läuft weiter und baut alle Container neu auf
+
+**Wann nützlich:**
+- Container starten nicht mehr korrekt
+- Nach größeren Konfigurationsänderungen
+- Verdacht auf beschädigte Container
+- Zum Aufräumen alter Container-Images
+
+⚠️ **WICHTIG**: Deine Datenbanken, Nextcloud-Dateien, Authentik-Konfigurationen, etc. bleiben alle erhalten! Es werden nur die Container neu gebaut.
+
 ## Zugriff auf Services
 
 Nach erfolgreichem Deployment sind die Services erreichbar unter:
