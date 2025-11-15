@@ -19,6 +19,12 @@ services:
       - ./traefik/acme.json:/acme.json
       - ./traefik/config.yml:/config.yml:ro
       - traefik-logs:/var/log/traefik
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"
@@ -51,6 +57,12 @@ services:
       - GENERIC_TIMEZONE=${TIMEZONE}
     volumes:
       - ./n8n/data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.n8n.entrypoints=http"
@@ -79,6 +91,12 @@ services:
       - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   nextcloud-redis:
     image: redis:alpine
@@ -86,6 +104,12 @@ services:
     restart: unless-stopped
     networks:
       - nextcloud
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   nextcloud:
     image: nextcloud:latest
@@ -114,6 +138,12 @@ services:
       - OVERWRITEPROTOCOL=https
       - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
       - OVERWRITEHOST=${NEXTCLOUD_DOMAIN}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/status.php || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nextcloud.entrypoints=http"
@@ -146,6 +176,12 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./portainer/data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.entrypoints=http"
@@ -217,6 +253,12 @@ services:
     depends_on:
       - authentik-postgresql
       - authentik-redis
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/-/health/live/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.authentik.entrypoints=http"
@@ -254,6 +296,12 @@ services:
     depends_on:
       - authentik-postgresql
       - authentik-redis
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   crowdsec:
     image: crowdsecurity/crowdsec:latest
@@ -273,6 +321,12 @@ services:
       - traefik-logs:/var/log/traefik:ro
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "cscli", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   traefik-bouncer:
     image: fbonalair/traefik-crowdsec-bouncer:latest
@@ -286,6 +340,12 @@ services:
       - GIN_MODE=release
     depends_on:
       - crowdsec
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   watchtower:
     image: containrrr/watchtower:latest
@@ -310,6 +370,12 @@ services:
     command: --schedule "0 0 3 * * *"
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep watchtower || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 networks:
   proxy:
