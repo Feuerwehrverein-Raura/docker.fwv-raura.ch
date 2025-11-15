@@ -24,20 +24,57 @@ jobs:
           SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
           ssh-keyscan -H "${SERVER_HOST}" >> ~/.ssh/known_hosts
 
-      - name: Check if server setup is needed
+      - name: Check server and service health
         id: check_setup
         run: |
           # Trim whitespace from secrets
           SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
           SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
           SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
 
-          if ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" 'command -v docker &> /dev/null'; then
-            echo "setup_needed=false" >> $GITHUB_OUTPUT
-            echo "✓ Docker is already installed on server"
-          else
+          # Check if Docker is installed
+          if ! ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" 'command -v docker &> /dev/null'; then
             echo "setup_needed=true" >> $GITHUB_OUTPUT
-            echo "⚠ Docker not found - server setup will be performed"
+            echo "⚠ Docker not found - full server setup will be performed"
+            exit 0
+          fi
+
+          echo "✓ Docker is installed"
+
+          # Check if docker-compose.yml exists
+          if ! ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "[ -f ${DEPLOY_PATH}/docker-compose.yml ]"; then
+            echo "setup_needed=false" >> $GITHUB_OUTPUT
+            echo "⚠ Docker Compose file not found - initial deployment needed"
+            exit 0
+          fi
+
+          echo "✓ Docker Compose file exists"
+
+          # Check container health
+          echo "Checking container health..."
+          HEALTH_CHECK=$(ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "cd ${DEPLOY_PATH} && docker-compose ps --format json 2>/dev/null" || echo "ERROR")
+
+          if [ "$HEALTH_CHECK" = "ERROR" ]; then
+            echo "setup_needed=false" >> $GITHUB_OUTPUT
+            echo "⚠ Cannot check container status - deployment will proceed"
+            exit 0
+          fi
+
+          # Count unhealthy containers (containers with Health status that is not "healthy" or empty)
+          UNHEALTHY=$(echo "$HEALTH_CHECK" | jq -r 'select(.Health != "healthy" and .Health != "" and .Health != null) | .Name' | wc -l)
+          TOTAL=$(echo "$HEALTH_CHECK" | jq -r '.Name' | wc -l)
+
+          echo "Found ${TOTAL} containers, ${UNHEALTHY} unhealthy"
+
+          if [ "$UNHEALTHY" -gt 0 ]; then
+            echo "setup_needed=false" >> $GITHUB_OUTPUT
+            echo "⚠ ${UNHEALTHY} container(s) unhealthy - redeployment needed"
+            echo "Unhealthy containers:"
+            echo "$HEALTH_CHECK" | jq -r 'select(.Health != "healthy" and .Health != "" and .Health != null) | "  - \(.Name): \(.Health)"'
+          else
+            echo "setup_needed=false" >> $GITHUB_OUTPUT
+            echo "✅ All ${TOTAL} containers are healthy - deployment will refresh services"
           fi
 
       - name: Run server setup (if needed)

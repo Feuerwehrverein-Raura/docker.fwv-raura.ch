@@ -164,6 +164,30 @@ Gehe zu: Repository → Settings → Secrets and variables → Actions → New r
 | `AUTHENTIK_SECRET_KEY` | `6d4a9c2f...` (64 Zeichen) | `openssl rand -hex 32` |
 | `AUTHENTIK_POSTGRESQL_PASSWORD` | `5e3b7a9d...` | `openssl rand -hex 16` |
 
+##### CrowdSec
+
+| Secret Name | Beispiel-Wert | Generierung |
+|------------|---------------|-------------|
+| `CROWDSEC_BOUNCER_KEY_TRAEFIK` | `4f7c2b9a...` | `openssl rand -hex 32` |
+
+⚠️ **Hinweis**: Der CrowdSec Bouncer Key sollte ein zufälliger String sein. Bei der ersten Installation wird CrowdSec diesen Key automatisch registrieren.
+
+##### Watchtower E-Mail-Benachrichtigungen
+
+| Secret Name | Beispiel-Wert | Beschreibung |
+|------------|---------------|--------------|
+| `WATCHTOWER_EMAIL_FROM` | `watchtower@fwv-raura.ch` | Absender-E-Mail für Update-Benachrichtigungen |
+| `WATCHTOWER_EMAIL_TO` | `admin@fwv-raura.ch` | Empfänger-E-Mail für Update-Benachrichtigungen |
+| `WATCHTOWER_SMTP_SERVER` | `mail.fwv-raura.ch` | SMTP Server für E-Mail-Versand |
+| `WATCHTOWER_SMTP_PORT` | `587` | SMTP Port (normalerweise 587 für TLS) |
+| `WATCHTOWER_SMTP_USER` | `watchtower@fwv-raura.ch` | SMTP Benutzername |
+| `WATCHTOWER_SMTP_PASSWORD` | `dein-smtp-passwort` | SMTP Passwort |
+
+⚠️ **Wichtig bei den Secrets**:
+- Alle Secret-Werte sollten **OHNE zusätzliche Leerzeichen oder Zeilenumbrüche** gespeichert werden
+- Kopiere Secret-Werte direkt, ohne versehentlich Enter zu drücken
+- Der GitHub Actions Workflow trimmt automatisch Whitespace, aber saubere Werte sind besser
+
 #### SSH Key einrichten
 
 Wenn noch kein SSH Key für GitHub Actions existiert:
@@ -549,39 +573,113 @@ apt upgrade -y
 
 ## GitHub Secrets Übersicht
 
-Zusammenfassung aller benötigten GitHub Secrets:
+Vollständige Zusammenfassung aller benötigten GitHub Secrets:
+
+### Alle Secrets
 
 ```bash
-# Server Zugang
-SSH_PRIVATE_KEY
+# ==========================================
+# Server Zugang (5 Secrets)
+# ==========================================
+SSH_PRIVATE_KEY=<private-key-content>
 SERVER_HOST=docker.fwv-raura.ch
 SERVER_USER=root
 SERVER_PORT=22
 DEPLOY_PATH=/opt/docker
 
-# Traefik
+# ==========================================
+# Traefik (1 Secret)
+# ==========================================
 TRAEFIK_BASIC_AUTH=admin:$apr1$...
 
-# Nextcloud
+# ==========================================
+# Nextcloud (4 Secrets)
+# ==========================================
 NEXTCLOUD_DB_ROOT_PASSWORD=<generated>
 NEXTCLOUD_DB_PASSWORD=<generated>
 NEXTCLOUD_ADMIN_USER=admin
 NEXTCLOUD_ADMIN_PASSWORD=<secure-password>
 
-# Authentik
+# ==========================================
+# Authentik (2 Secrets)
+# ==========================================
 AUTHENTIK_SECRET_KEY=<generated-64-chars>
 AUTHENTIK_POSTGRESQL_PASSWORD=<generated>
+
+# ==========================================
+# CrowdSec (1 Secret)
+# ==========================================
+CROWDSEC_BOUNCER_KEY_TRAEFIK=<generated>
+
+# ==========================================
+# Watchtower E-Mail (6 Secrets)
+# ==========================================
+WATCHTOWER_EMAIL_FROM=watchtower@fwv-raura.ch
+WATCHTOWER_EMAIL_TO=admin@fwv-raura.ch
+WATCHTOWER_SMTP_SERVER=mail.fwv-raura.ch
+WATCHTOWER_SMTP_PORT=587
+WATCHTOWER_SMTP_USER=watchtower@fwv-raura.ch
+WATCHTOWER_SMTP_PASSWORD=<smtp-password>
 ```
+
+**Gesamt: 19 GitHub Secrets**
 
 ### Script zum Generieren der Passwörter
 
 ```bash
 #!/bin/bash
+echo "=== Generiere sichere Passwörter ==="
+echo ""
+echo "# Nextcloud"
 echo "NEXTCLOUD_DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
 echo "NEXTCLOUD_DB_PASSWORD=$(openssl rand -hex 16)"
+echo ""
+echo "# Authentik"
 echo "AUTHENTIK_SECRET_KEY=$(openssl rand -hex 32)"
 echo "AUTHENTIK_POSTGRESQL_PASSWORD=$(openssl rand -hex 16)"
+echo ""
+echo "# CrowdSec"
+echo "CROWDSEC_BOUNCER_KEY_TRAEFIK=$(openssl rand -hex 32)"
+echo ""
+echo "# Traefik Basic Auth"
+echo "# Generiere mit: htpasswd -nb admin dein_passwort"
+echo "# Oder online: https://hostingcanada.org/htpasswd-generator/"
 ```
+
+### Checkliste: Sind alle Secrets gesetzt?
+
+- [ ] **Server Zugang** (5/5):
+  - [ ] SSH_PRIVATE_KEY
+  - [ ] SERVER_HOST
+  - [ ] SERVER_USER
+  - [ ] SERVER_PORT
+  - [ ] DEPLOY_PATH
+
+- [ ] **Traefik** (1/1):
+  - [ ] TRAEFIK_BASIC_AUTH
+
+- [ ] **Nextcloud** (4/4):
+  - [ ] NEXTCLOUD_DB_ROOT_PASSWORD
+  - [ ] NEXTCLOUD_DB_PASSWORD
+  - [ ] NEXTCLOUD_ADMIN_USER
+  - [ ] NEXTCLOUD_ADMIN_PASSWORD
+
+- [ ] **Authentik** (2/2):
+  - [ ] AUTHENTIK_SECRET_KEY
+  - [ ] AUTHENTIK_POSTGRESQL_PASSWORD
+
+- [ ] **CrowdSec** (1/1):
+  - [ ] CROWDSEC_BOUNCER_KEY_TRAEFIK
+
+- [ ] **Watchtower** (6/6):
+  - [ ] WATCHTOWER_EMAIL_FROM
+  - [ ] WATCHTOWER_EMAIL_TO
+  - [ ] WATCHTOWER_SMTP_SERVER
+  - [ ] WATCHTOWER_SMTP_PORT
+  - [ ] WATCHTOWER_SMTP_USER
+  - [ ] WATCHTOWER_SMTP_PASSWORD
+
+✅ **Alle 19 Secrets gesetzt? → Bereit für Deployment!**
 
 ## Nützliche Befehle
 
