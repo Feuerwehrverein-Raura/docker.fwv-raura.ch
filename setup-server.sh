@@ -57,8 +57,47 @@ apt-get install -y -qq \
     htop \
     vim \
     ufw \
-    fail2ban
+    fail2ban \
+    rkhunter \
+    lynis \
+    unattended-upgrades \
+    mailutils \
+    postfix
 print_success "Pakete installiert"
+
+# Konfiguriere Automatische Sicherheitsupdates
+print_info "Konfiguriere automatische Sicherheitsupdates..."
+cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Mail "root";
+Unattended-Upgrade::MailReport "only-on-error";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+EOF
+
+# Enable automatic updates
+cat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF
+
+print_success "Automatische Sicherheitsupdates konfiguriert"
+
+# Konfiguriere rkhunter
+print_info "Konfiguriere rkhunter..."
+rkhunter --update || true
+rkhunter --propupd || true
+print_success "rkhunter konfiguriert"
 
 # Docker Installation
 if ! command -v docker &> /dev/null; then

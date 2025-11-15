@@ -10,12 +10,23 @@ Dieses Repository enthält die komplette Docker-Infrastruktur für den Server `d
 
 ### Enthaltene Services
 
+**Produktions-Services:**
 - **Traefik** - Reverse Proxy mit automatischen SSL-Zertifikaten (Let's Encrypt via HTTP Challenge)
 - **Portainer** - Docker Management Web-UI
 - **Authentik** - Identity Provider für Single Sign-On (SSO)
 - **n8n** - Workflow-Automatisierung
 - **Nextcloud** - Cloud-Speicher mit MariaDB und Redis
 - **Mailcow** - E-Mail Server (Vorbereitet für spätere Installation)
+
+**Security & Monitoring:**
+- **CrowdSec** - IDS/IPS mit Community Threat Intelligence
+- **Traefik Bouncer** - Web Application Firewall Integration
+- **Watchtower** - Automatische Container-Updates mit E-Mail-Benachrichtigungen
+- **Unattended-Upgrades** - Automatische Debian-Sicherheitsupdates mit E-Mail-Benachrichtigungen
+- **Fail2Ban** - SSH Brute-Force Protection
+- **UFW** - Firewall
+- **rkhunter** - Rootkit Detection
+- **Lynis** - Security Auditing
 
 ### Architektur
 
@@ -517,10 +528,20 @@ Status überprüfen:
 fail2ban-client status
 ```
 
-### System Updates
+### Automatische System Updates
 
-Regelmäßige System-Updates auf dem Server:
+**Automatische Sicherheitsupdates** sind konfiguriert mit `unattended-upgrades`:
+- Täglich automatische Installation von Sicherheitsupdates
+- E-Mail-Benachrichtigungen bei Fehlern an `admin@fwv-raura.ch`
+- Automatisches Cleanup alter Kernel-Pakete
 
+Status prüfen:
+```bash
+systemctl status unattended-upgrades
+cat /var/log/unattended-upgrades/unattended-upgrades.log
+```
+
+Manuelle Updates (falls benötigt):
 ```bash
 apt update
 apt upgrade -y
