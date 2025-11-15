@@ -20,12 +20,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          # Trim whitespace from SERVER_HOST secret
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          ssh-keyscan -H "${SERVER_HOST}" >> ~/.ssh/known_hosts
 
       - name: Check if server setup is needed
         id: check_setup
         run: |
-          if ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'command -v docker &> /dev/null'; then
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+
+          if ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" 'command -v docker &> /dev/null'; then
             echo "setup_needed=false" >> $GITHUB_OUTPUT
             echo "✓ Docker is already installed on server"
           else
@@ -38,28 +45,33 @@ jobs:
         run: |
           echo "🚀 Running initial server setup..."
 
+          # Trim whitespace from secrets (removes newlines, spaces, etc.)
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+
           # Validate required secrets are set
-          if [ -z "${{ secrets.SERVER_PORT }}" ]; then
+          if [ -z "$SERVER_PORT" ]; then
             echo "Error: SERVER_PORT secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.SERVER_USER }}" ]; then
+          if [ -z "$SERVER_USER" ]; then
             echo "Error: SERVER_USER secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.SERVER_HOST }}" ]; then
+          if [ -z "$SERVER_HOST" ]; then
             echo "Error: SERVER_HOST secret is not set"
             exit 1
           fi
 
           echo "Uploading setup script to server..."
-          scp -P "${{ secrets.SERVER_PORT }}" \
+          scp -P "${SERVER_PORT}" \
             setup-server.sh \
-            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/setup-server.sh"
+            "${SERVER_USER}@${SERVER_HOST}:/tmp/setup-server.sh"
 
           echo "Executing setup script on server..."
-          ssh -p "${{ secrets.SERVER_PORT }}" \
-            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'ENDSSH'
+          ssh -p "${SERVER_PORT}" \
+            "${SERVER_USER}@${SERVER_HOST}" << 'ENDSSH'
           chmod +x /tmp/setup-server.sh
           /tmp/setup-server.sh
           rm /tmp/setup-server.sh
@@ -86,8 +98,14 @@ jobs:
 
       - name: Deploy files to server
         run: |
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
           rsync -avz --delete \
-            -e "ssh -p ${{ secrets.SERVER_PORT }}" \
+            -e "ssh -p ${SERVER_PORT}" \
             --exclude '.git' \
             --exclude '.github' \
             --exclude '.env' \
@@ -109,12 +127,18 @@ jobs:
             --exclude 'README.md' \
             --exclude 'CROWDSEC.md' \
             --exclude 'AUTHENTIK-INTEGRATION.md' \
-            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/
+            ./ "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/"
 
       - name: Configure acme.json permissions
         run: |
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cd ${{ secrets.DEPLOY_PATH }} || { echo "Error: DEPLOY_PATH not found"; exit 1; }
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
+          cd "${DEPLOY_PATH}" || { echo "Error: DEPLOY_PATH not found"; exit 1; }
           mkdir -p traefik
           if [ ! -f traefik/acme.json ]; then
             touch traefik/acme.json
@@ -124,8 +148,14 @@ jobs:
 
       - name: Create .env file from secrets
         run: |
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cat > ${{ secrets.DEPLOY_PATH }}/.env << 'EOF'
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
+          cat > "${DEPLOY_PATH}/.env" << 'EOF'
           # Domain Configuration
           DOMAIN_BASE=fwv-raura.ch
           TRAEFIK_DOMAIN=traefik.fwv-raura.ch
@@ -167,12 +197,17 @@ jobs:
           WATCHTOWER_SMTP_USER=${{ secrets.WATCHTOWER_SMTP_USER }}
           WATCHTOWER_SMTP_PASSWORD=${{ secrets.WATCHTOWER_SMTP_PASSWORD }}
           EOF
-          chmod 600 ${{ secrets.DEPLOY_PATH }}/.env
+          chmod 600 "${DEPLOY_PATH}/.env"
           ENDSSH
 
       - name: Configure email notifications for system updates
         run: |
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << 'ENDSSH'
           # Configure Postfix as SMTP relay for unattended-upgrades notifications
           tee /etc/postfix/main.cf > /dev/null << 'EOF'
           # Basic Postfix configuration
@@ -218,7 +253,12 @@ jobs:
 
       - name: Create Docker networks
         run: |
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << 'ENDSSH'
           docker network create proxy 2>/dev/null || true
           docker network create nextcloud 2>/dev/null || true
           docker network create authentik 2>/dev/null || true
@@ -226,8 +266,14 @@ jobs:
 
       - name: Pull and restart containers
         run: |
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cd ${{ secrets.DEPLOY_PATH }} || { echo "Error: DEPLOY_PATH not found"; exit 1; }
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
+          cd "${DEPLOY_PATH}" || { echo "Error: DEPLOY_PATH not found"; exit 1; }
           docker-compose pull
           docker-compose up -d --remove-orphans
           docker-compose ps
@@ -246,8 +292,14 @@ jobs:
 
       - name: Check container health
         run: |
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-          cd ${{ secrets.DEPLOY_PATH }} || { echo "Error: DEPLOY_PATH not found"; exit 1; }
+          # Trim whitespace from secrets
+          SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
+          SERVER_USER=$(echo "${{ secrets.SERVER_USER }}" | xargs)
+          SERVER_HOST=$(echo "${{ secrets.SERVER_HOST }}" | xargs)
+          DEPLOY_PATH=$(echo "${{ secrets.DEPLOY_PATH }}" | xargs)
+
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" << ENDSSH
+          cd "${DEPLOY_PATH}" || { echo "Error: DEPLOY_PATH not found"; exit 1; }
           echo "Container Status:"
           docker-compose ps
           echo ""
