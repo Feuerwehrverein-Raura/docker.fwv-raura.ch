@@ -18,6 +18,9 @@ services:
       - ./traefik/traefik.yml:/traefik.yml:ro
       - ./traefik/acme.json:/acme.json
       - ./traefik/config.yml:/config.yml:ro
+      - traefik-logs:/var/log/traefik
+    depends_on:
+      - traefik-bouncer
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"
@@ -254,6 +257,62 @@ services:
       - authentik-postgresql
       - authentik-redis
 
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    networks:
+      - proxy
+    environment:
+      - GID=${GID-1000}
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors crowdsecurity/iptables crowdsecurity/linux
+      - BOUNCER_KEY_TRAEFIK=${CROWDSEC_BOUNCER_KEY_TRAEFIK}
+    volumes:
+      - ./crowdsec/config:/etc/crowdsec
+      - ./crowdsec/data:/var/lib/crowdsec/data
+      - /var/log:/var/log:ro
+      - /var/log/auth.log:/var/log/auth.log:ro
+      - traefik-logs:/var/log/traefik:ro
+    security_opt:
+      - no-new-privileges:true
+
+  traefik-bouncer:
+    image: fbonalair/traefik-crowdsec-bouncer:latest
+    container_name: traefik-bouncer
+    restart: unless-stopped
+    networks:
+      - proxy
+    environment:
+      - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_KEY_TRAEFIK}
+      - CROWDSEC_AGENT_HOST=crowdsec:8080
+      - GIN_MODE=release
+    depends_on:
+      - crowdsec
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      - WATCHTOWER_POLL_INTERVAL=86400
+      - WATCHTOWER_NOTIFICATIONS=email
+      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=${WATCHTOWER_EMAIL_FROM}
+      - WATCHTOWER_NOTIFICATION_EMAIL_TO=${WATCHTOWER_EMAIL_TO}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=${WATCHTOWER_SMTP_SERVER}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=${WATCHTOWER_SMTP_PORT}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=${WATCHTOWER_SMTP_USER}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=${WATCHTOWER_SMTP_PASSWORD}
+      - WATCHTOWER_NOTIFICATION_EMAIL_DELAY=2
+      - TZ=${TIMEZONE}
+    command: --schedule "0 0 3 * * *"
+    security_opt:
+      - no-new-privileges:true
+
 networks:
   proxy:
     external: false
@@ -261,3 +320,6 @@ networks:
     external: false
   authentik:
     external: false
+
+volumes:
+  traefik-logs:

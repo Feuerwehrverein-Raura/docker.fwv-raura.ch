@@ -17,6 +17,8 @@ authentik/redis/
 authentik/media/
 authentik/certs/
 authentik/custom-templates/
+crowdsec/config/
+crowdsec/data/
 
 # Mailcow
 mailcow-dockerized/
