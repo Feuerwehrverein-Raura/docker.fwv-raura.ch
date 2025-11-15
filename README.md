@@ -172,16 +172,21 @@ Gehe zu: Repository → Settings → Secrets and variables → Actions → New r
 
 ⚠️ **Hinweis**: Der CrowdSec Bouncer Key sollte ein zufälliger String sein. Bei der ersten Installation wird CrowdSec diesen Key automatisch registrieren.
 
-##### Watchtower E-Mail-Benachrichtigungen
+##### SMTP/Email-Konfiguration
+
+Diese Secrets werden von mehreren Services verwendet:
+- **Watchtower**: Container-Update-Benachrichtigungen
+- **Postfix**: System-Update-Benachrichtigungen (unattended-upgrades)
+- **Zukünftige Services**: Nextcloud, n8n, Authentik können diese auch nutzen
 
 | Secret Name | Beispiel-Wert | Beschreibung |
 |------------|---------------|--------------|
-| `WATCHTOWER_EMAIL_FROM` | `watchtower@fwv-raura.ch` | Absender-E-Mail für Update-Benachrichtigungen |
-| `WATCHTOWER_EMAIL_TO` | `admin@fwv-raura.ch` | Empfänger-E-Mail für Update-Benachrichtigungen |
-| `WATCHTOWER_SMTP_SERVER` | `mail.fwv-raura.ch` | SMTP Server für E-Mail-Versand |
-| `WATCHTOWER_SMTP_PORT` | `587` | SMTP Port (normalerweise 587 für TLS) |
-| `WATCHTOWER_SMTP_USER` | `watchtower@fwv-raura.ch` | SMTP Benutzername |
-| `WATCHTOWER_SMTP_PASSWORD` | `dein-smtp-passwort` | SMTP Passwort |
+| `EMAIL_FROM` | `notifications@fwv-raura.ch` | Absender-E-Mail für alle Benachrichtigungen |
+| `EMAIL_TO` | `admin@fwv-raura.ch` | Empfänger-E-Mail für alle Benachrichtigungen |
+| `SMTP_SERVER` | `mail.fwv-raura.ch` | SMTP Server für E-Mail-Versand |
+| `SMTP_PORT` | `587` | SMTP Port (normalerweise 587 für TLS) |
+| `SMTP_USER` | `notifications@fwv-raura.ch` | SMTP Benutzername |
+| `SMTP_PASSWORD` | `dein-smtp-passwort` | SMTP Passwort |
 
 ⚠️ **Wichtig bei den Secrets**:
 - Alle Secret-Werte sollten **OHNE zusätzliche Leerzeichen oder Zeilenumbrüche** gespeichert werden
@@ -652,14 +657,14 @@ AUTHENTIK_POSTGRESQL_PASSWORD=<generated>
 CROWDSEC_BOUNCER_KEY_TRAEFIK=<generated>
 
 # ==========================================
-# Watchtower E-Mail (6 Secrets)
+# SMTP/Email (6 Secrets)
 # ==========================================
-WATCHTOWER_EMAIL_FROM=watchtower@fwv-raura.ch
-WATCHTOWER_EMAIL_TO=admin@fwv-raura.ch
-WATCHTOWER_SMTP_SERVER=mail.fwv-raura.ch
-WATCHTOWER_SMTP_PORT=587
-WATCHTOWER_SMTP_USER=watchtower@fwv-raura.ch
-WATCHTOWER_SMTP_PASSWORD=<smtp-password>
+EMAIL_FROM=notifications@fwv-raura.ch
+EMAIL_TO=admin@fwv-raura.ch
+SMTP_SERVER=mail.fwv-raura.ch
+SMTP_PORT=587
+SMTP_USER=notifications@fwv-raura.ch
+SMTP_PASSWORD=<smtp-password>
 ```
 
 **Gesamt: 19 GitHub Secrets**
@@ -711,13 +716,13 @@ echo "# Oder online: https://hostingcanada.org/htpasswd-generator/"
 - [ ] **CrowdSec** (1/1):
   - [ ] CROWDSEC_BOUNCER_KEY_TRAEFIK
 
-- [ ] **Watchtower** (6/6):
-  - [ ] WATCHTOWER_EMAIL_FROM
-  - [ ] WATCHTOWER_EMAIL_TO
-  - [ ] WATCHTOWER_SMTP_SERVER
-  - [ ] WATCHTOWER_SMTP_PORT
-  - [ ] WATCHTOWER_SMTP_USER
-  - [ ] WATCHTOWER_SMTP_PASSWORD
+- [ ] **SMTP/Email** (6/6):
+  - [ ] EMAIL_FROM
+  - [ ] EMAIL_TO
+  - [ ] SMTP_SERVER
+  - [ ] SMTP_PORT
+  - [ ] SMTP_USER
+  - [ ] SMTP_PASSWORD
 
 ✅ **Alle 19 Secrets gesetzt? → Bereit für Deployment!**
 
