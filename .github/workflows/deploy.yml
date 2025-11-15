@@ -38,11 +38,28 @@ jobs:
         run: |
           echo "🚀 Running initial server setup..."
 
-          # Upload setup script
-          scp -P ${{ secrets.SERVER_PORT }} setup-server.sh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/setup-server.sh
+          # Validate required secrets are set
+          if [ -z "${{ secrets.SERVER_PORT }}" ]; then
+            echo "Error: SERVER_PORT secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_USER }}" ]; then
+            echo "Error: SERVER_USER secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_HOST }}" ]; then
+            echo "Error: SERVER_HOST secret is not set"
+            exit 1
+          fi
 
-          # Run setup script
-          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          echo "Uploading setup script to server..."
+          scp -P "${{ secrets.SERVER_PORT }}" \
+            setup-server.sh \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/setup-server.sh"
+
+          echo "Executing setup script on server..."
+          ssh -p "${{ secrets.SERVER_PORT }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'ENDSSH'
           chmod +x /tmp/setup-server.sh
           /tmp/setup-server.sh
           rm /tmp/setup-server.sh
