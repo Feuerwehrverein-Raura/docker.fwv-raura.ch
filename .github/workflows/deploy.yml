@@ -30,6 +30,12 @@ jobs:
           mkdir -p nextcloud/data
           mkdir -p nextcloud/config
           mkdir -p nextcloud/apps
+          mkdir -p portainer/data
+          mkdir -p authentik/postgresql
+          mkdir -p authentik/redis
+          mkdir -p authentik/media
+          mkdir -p authentik/certs
+          mkdir -p authentik/custom-templates
 
       - name: Deploy files to server
         run: |
@@ -45,6 +51,12 @@ jobs:
             --exclude 'nextcloud/data/*' \
             --exclude 'nextcloud/config/*' \
             --exclude 'nextcloud/apps/*' \
+            --exclude 'portainer/data/*' \
+            --exclude 'authentik/postgresql/*' \
+            --exclude 'authentik/redis/*' \
+            --exclude 'authentik/media/*' \
+            --exclude 'authentik/certs/*' \
+            --exclude 'authentik/custom-templates/*' \
             --exclude 'README.md' \
             ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/
 
@@ -58,11 +70,49 @@ jobs:
           chmod 600 traefik/acme.json
           ENDSSH
 
+      - name: Create .env file from secrets
+        run: |
+          ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          cat > ${{ secrets.DEPLOY_PATH }}/.env << 'EOF'
+          # Domain Configuration
+          DOMAIN_BASE=fwv-raura.ch
+          TRAEFIK_DOMAIN=traefik.fwv-raura.ch
+          PORTAINER_DOMAIN=portainer.fwv-raura.ch
+          AUTHENTIK_DOMAIN=auth.fwv-raura.ch
+          N8N_DOMAIN=n8n.fwv-raura.ch
+          NEXTCLOUD_DOMAIN=cloud.fwv-raura.ch
+          MAILCOW_DOMAIN=mail.fwv-raura.ch
+
+          # Timezone
+          TIMEZONE=Europe/Zurich
+
+          # Traefik
+          TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}
+
+          # Nextcloud Database
+          NEXTCLOUD_DB_ROOT_PASSWORD=${{ secrets.NEXTCLOUD_DB_ROOT_PASSWORD }}
+          NEXTCLOUD_DB_PASSWORD=${{ secrets.NEXTCLOUD_DB_PASSWORD }}
+
+          # Nextcloud Admin
+          NEXTCLOUD_ADMIN_USER=${{ secrets.NEXTCLOUD_ADMIN_USER }}
+          NEXTCLOUD_ADMIN_PASSWORD=${{ secrets.NEXTCLOUD_ADMIN_PASSWORD }}
+
+          # Authentik
+          AUTHENTIK_SECRET_KEY=${{ secrets.AUTHENTIK_SECRET_KEY }}
+          AUTHENTIK_ERROR_REPORTING=false
+          AUTHENTIK_POSTGRESQL_PASSWORD=${{ secrets.AUTHENTIK_POSTGRESQL_PASSWORD }}
+          AUTHENTIK_POSTGRESQL_USER=authentik
+          AUTHENTIK_POSTGRESQL_NAME=authentik
+          EOF
+          chmod 600 ${{ secrets.DEPLOY_PATH }}/.env
+          ENDSSH
+
       - name: Create Docker networks
         run: |
           ssh -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
           docker network create proxy 2>/dev/null || true
           docker network create nextcloud 2>/dev/null || true
+          docker network create authentik 2>/dev/null || true
           ENDSSH
 
       - name: Pull and restart containers
@@ -80,6 +130,8 @@ jobs:
           echo ""
           echo "Services:"
           echo "  - Traefik: https://traefik.fwv-raura.ch"
+          echo "  - Portainer: https://portainer.fwv-raura.ch"
+          echo "  - Authentik: https://auth.fwv-raura.ch"
           echo "  - n8n: https://n8n.fwv-raura.ch"
           echo "  - Nextcloud: https://cloud.fwv-raura.ch"
 

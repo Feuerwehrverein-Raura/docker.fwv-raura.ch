@@ -12,9 +12,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    environment:
-      - CF_API_EMAIL=${CF_API_EMAIL}
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -33,7 +30,7 @@ services:
       - "traefik.http.routers.traefik-secure.rule=Host(`${TRAEFIK_DOMAIN}`)"
       - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
       - "traefik.http.routers.traefik-secure.tls=true"
-      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik-secure.tls.domains[0].main=${DOMAIN_BASE}"
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAIN_BASE}"
       - "traefik.http.routers.traefik-secure.service=api@internal"
@@ -62,7 +59,7 @@ services:
       - "traefik.http.routers.n8n-secure.entrypoints=https"
       - "traefik.http.routers.n8n-secure.rule=Host(`${N8N_DOMAIN}`)"
       - "traefik.http.routers.n8n-secure.tls=true"
-      - "traefik.http.routers.n8n-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.n8n-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.n8n-secure.service=n8n"
       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
       - "traefik.docker.network=proxy"
@@ -125,7 +122,7 @@ services:
       - "traefik.http.routers.nextcloud-secure.entrypoints=https"
       - "traefik.http.routers.nextcloud-secure.rule=Host(`${NEXTCLOUD_DOMAIN}`)"
       - "traefik.http.routers.nextcloud-secure.tls=true"
-      - "traefik.http.routers.nextcloud-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.nextcloud-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.nextcloud-secure.service=nextcloud"
       - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
       - "traefik.docker.network=proxy"
@@ -136,8 +133,131 @@ services:
       - "traefik.http.middlewares.nextcloud-headers.headers.customFrameOptionsValue=SAMEORIGIN"
       - "traefik.http.middlewares.nextcloud-headers.headers.customResponseHeaders.Strict-Transport-Security=15552000"
 
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./portainer/data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.entrypoints=http"
+      - "traefik.http.routers.portainer.rule=Host(`${PORTAINER_DOMAIN}`)"
+      - "traefik.http.middlewares.portainer-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.portainer.middlewares=portainer-https-redirect"
+      - "traefik.http.routers.portainer-secure.entrypoints=https"
+      - "traefik.http.routers.portainer-secure.rule=Host(`${PORTAINER_DOMAIN}`)"
+      - "traefik.http.routers.portainer-secure.tls=true"
+      - "traefik.http.routers.portainer-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.portainer-secure.service=portainer"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.docker.network=proxy"
+
+  authentik-postgresql:
+    image: postgres:16-alpine
+    container_name: authentik-postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${AUTHENTIK_POSTGRESQL_NAME} -U $${AUTHENTIK_POSTGRESQL_USER}"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    networks:
+      - authentik
+    volumes:
+      - ./authentik/postgresql:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+      - POSTGRES_USER=${AUTHENTIK_POSTGRESQL_USER}
+      - POSTGRES_DB=${AUTHENTIK_POSTGRESQL_NAME}
+
+  authentik-redis:
+    image: redis:alpine
+    container_name: authentik-redis
+    restart: unless-stopped
+    command: --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
+    networks:
+      - authentik
+    volumes:
+      - ./authentik/redis:/data
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik-server
+    restart: unless-stopped
+    command: server
+    networks:
+      - proxy
+      - authentik
+    environment:
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=${AUTHENTIK_ERROR_REPORTING}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgresql
+      - AUTHENTIK_POSTGRESQL__USER=${AUTHENTIK_POSTGRESQL_USER}
+      - AUTHENTIK_POSTGRESQL__NAME=${AUTHENTIK_POSTGRESQL_NAME}
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+    volumes:
+      - ./authentik/media:/media
+      - ./authentik/custom-templates:/templates
+    depends_on:
+      - authentik-postgresql
+      - authentik-redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.entrypoints=http"
+      - "traefik.http.routers.authentik.rule=Host(`${AUTHENTIK_DOMAIN}`)"
+      - "traefik.http.middlewares.authentik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.authentik.middlewares=authentik-https-redirect"
+      - "traefik.http.routers.authentik-secure.entrypoints=https"
+      - "traefik.http.routers.authentik-secure.rule=Host(`${AUTHENTIK_DOMAIN}`)"
+      - "traefik.http.routers.authentik-secure.tls=true"
+      - "traefik.http.routers.authentik-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik-secure.service=authentik"
+      - "traefik.http.services.authentik.loadbalancer.server.port=9000"
+      - "traefik.docker.network=proxy"
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    networks:
+      - authentik
+    environment:
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=${AUTHENTIK_ERROR_REPORTING}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgresql
+      - AUTHENTIK_POSTGRESQL__USER=${AUTHENTIK_POSTGRESQL_USER}
+      - AUTHENTIK_POSTGRESQL__NAME=${AUTHENTIK_POSTGRESQL_NAME}
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRESQL_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./authentik/media:/media
+      - ./authentik/certs:/certs
+      - ./authentik/custom-templates:/templates
+    depends_on:
+      - authentik-postgresql
+      - authentik-redis
+
 networks:
   proxy:
     external: false
   nextcloud:
+    external: false
+  authentik:
     external: false

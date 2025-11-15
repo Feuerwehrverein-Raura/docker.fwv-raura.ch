@@ -24,12 +24,9 @@ providers:
     filename: /config.yml
 
 certificatesResolvers:
-  cloudflare:
+  letsencrypt:
     acme:
       email: admin@fwv-raura.ch
       storage: acme.json
-      dnsChallenge:
-        provider: cloudflare
-        resolvers:
-          - "1.1.1.1:53"
-          - "1.0.0.1:53"
+      httpChallenge:
+        entryPoint: http

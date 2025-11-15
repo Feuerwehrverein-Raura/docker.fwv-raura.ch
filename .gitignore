@@ -11,6 +11,12 @@ nextcloud/html/
 nextcloud/data/
 nextcloud/config/
 nextcloud/apps/
+portainer/data/
+authentik/postgresql/
+authentik/redis/
+authentik/media/
+authentik/certs/
+authentik/custom-templates/
 
 # Mailcow
 mailcow-dockerized/
