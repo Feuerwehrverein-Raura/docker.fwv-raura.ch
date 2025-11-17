@@ -198,7 +198,7 @@ services:
       - "traefik.docker.network=proxy"
 
   authentik-postgresql:
-    image: postgres:latest
+    image: postgres:16-alpine
     container_name: authentik-postgresql
     restart: unless-stopped
     healthcheck:
