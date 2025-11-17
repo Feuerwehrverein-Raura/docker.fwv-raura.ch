@@ -159,11 +159,12 @@ jobs:
           mkdir -p portainer/data
           mkdir -p authentik/postgresql
           mkdir -p authentik/redis
-          mkdir -p authentik/media
+          mkdir -p authentik/media/public
           mkdir -p authentik/certs
           mkdir -p authentik/custom-templates
           mkdir -p crowdsec/config
           mkdir -p crowdsec/data
+          mkdir -p crowdsec/traefik-logs
 
       - name: Deploy files to server
         run: |
@@ -212,6 +213,10 @@ jobs:
           # Fix n8n permissions (needs to be writable by UID 1000)
           chown -R 1000:1000 n8n/data
           chmod -R 755 n8n/data
+
+          # Fix Authentik media permissions (needs to be writable by UID 1000)
+          chown -R 1000:1000 authentik/media
+          chmod -R 755 authentik/media
 
           echo "✓ Directory permissions fixed"
           ENDSSH
