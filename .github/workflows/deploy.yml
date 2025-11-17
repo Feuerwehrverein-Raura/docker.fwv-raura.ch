@@ -256,8 +256,9 @@ jobs:
           EOF
 
           # Append secrets
-          # Use printf to avoid GitHub Actions mangling $ characters
-          printf "TRAEFIK_BASIC_AUTH=%s\n" "${{ secrets.TRAEFIK_BASIC_AUTH }}" >> .env
+          # NOTE: TRAEFIK_BASIC_AUTH is set manually on server due to GitHub Actions $ escaping issues
+          # Set on server with: admin:$$2y$$05$$mhYyj9lcvx26/7grn21Seuv9tl5D4qgcRu9PFq2OQlEmdLKOX6rJO
+          echo "TRAEFIK_BASIC_AUTH=admin:\$\$2y\$\$05\$\$mhYyj9lcvx26/7grn21Seuv9tl5D4qgcRu9PFq2OQlEmdLKOX6rJO" >> .env
           echo "" >> .env
           echo "# Nextcloud Database" >> .env
           echo "NEXTCLOUD_DB_ROOT_PASSWORD=${{ secrets.NEXTCLOUD_DB_ROOT_PASSWORD }}" >> .env
