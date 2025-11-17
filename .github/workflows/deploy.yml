@@ -255,8 +255,10 @@ jobs:
           TIMEZONE=Europe/Zurich
           EOF
 
-          # Append secrets (this prevents shell expansion of $ characters)
-          echo "TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}" >> .env
+          # Append secrets (escape $ for Docker Compose)
+          # GitHub Secret should contain single $, we double them for docker-compose
+          TRAEFIK_AUTH="${{ secrets.TRAEFIK_BASIC_AUTH }}"
+          echo "TRAEFIK_BASIC_AUTH=${TRAEFIK_AUTH//\$/\$\$}" >> .env
           echo "" >> .env
           echo "# Nextcloud Database" >> .env
           echo "NEXTCLOUD_DB_ROOT_PASSWORD=${{ secrets.NEXTCLOUD_DB_ROOT_PASSWORD }}" >> .env
