@@ -144,9 +144,20 @@ Gehe zu: Repository → Settings → Secrets and variables → Actions → New r
 
 | Secret Name | Beispiel-Wert | Generierung |
 |------------|---------------|-------------|
-| `TRAEFIK_BASIC_AUTH` | `admin:$apr1$...` | `htpasswd -nb admin dein_passwort` oder [Online Generator](https://hostingcanada.org/htpasswd-generator/) |
+| `TRAEFIK_BASIC_AUTH` | *(Siehe Hinweis unten)* | `htpasswd -niB admin` und Passwort eingeben |
 
-⚠️ **WICHTIG**: Bei htpasswd müssen `$` Zeichen NICHT verdoppelt werden (im Gegensatz zur .env Datei)!
+⚠️ **WICHTIG - Traefik Basic Auth**:
+- Das `TRAEFIK_BASIC_AUTH` Secret wird **direkt im Workflow hardcoded** gesetzt
+- **Grund**: GitHub Actions kann `$` Zeichen in Secrets nicht korrekt für Docker Compose escapen
+- **Aktueller Hash** im Workflow: `admin:$$2y$$05$$mhYyj9lcvx26/7grn21Seuv9tl5D4qgcRu9PFq2OQlEmdLKOX6rJO`
+- **Passwort**: `qJt^UX5wGRhW&9BsscGe`
+- **Passwort ändern**:
+  1. Neuen Hash generieren: `echo 'dein-neues-passwort' | htpasswd -niB admin`
+  2. Workflow-Datei anpassen (`.github/workflows/deploy.yml` Zeile ~261)
+  3. `$` Zeichen verdoppeln: `$` → `$$` (z.B. `$2y$05$` → `$$2y$$05$$`)
+  4. Commit & Push
+
+Alternativ (wenn GitHub Actions Problem gelöst ist): Du kannst das Secret setzen, aber der Workflow nutzt derzeit den hardcoded Wert.
 
 ##### Nextcloud
 
