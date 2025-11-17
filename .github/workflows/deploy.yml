@@ -255,9 +255,9 @@ jobs:
           TIMEZONE=Europe/Zurich
           EOF
 
-          # Append secrets (escape $ for Docker Compose)
-          # GitHub Secret should contain single $, we double them for docker-compose
-          echo "TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}" | sed 's/\$/\$\$/g' >> .env
+          # Append secrets
+          # NOTE: TRAEFIK_BASIC_AUTH GitHub Secret must already contain $$ (escaped for docker-compose)
+          echo "TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}" >> .env
           echo "" >> .env
           echo "# Nextcloud Database" >> .env
           echo "NEXTCLOUD_DB_ROOT_PASSWORD=${{ secrets.NEXTCLOUD_DB_ROOT_PASSWORD }}" >> .env
