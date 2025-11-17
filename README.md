@@ -149,8 +149,6 @@ Gehe zu: Repository → Settings → Secrets and variables → Actions → New r
 ⚠️ **WICHTIG - Traefik Basic Auth**:
 - Das `TRAEFIK_BASIC_AUTH` Secret wird **direkt im Workflow hardcoded** gesetzt
 - **Grund**: GitHub Actions kann `$` Zeichen in Secrets nicht korrekt für Docker Compose escapen
-- **Aktueller Hash** im Workflow: `admin:$$2y$$05$$mhYyj9lcvx26/7grn21Seuv9tl5D4qgcRu9PFq2OQlEmdLKOX6rJO`
-- **Passwort**: `qJt^UX5wGRhW&9BsscGe`
 - **Passwort ändern**:
   1. Neuen Hash generieren: `echo 'dein-neues-passwort' | htpasswd -niB admin`
   2. Workflow-Datei anpassen (`.github/workflows/deploy.yml` Zeile ~261)
