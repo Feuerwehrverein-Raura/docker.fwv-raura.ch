@@ -18,7 +18,7 @@ services:
       - ./traefik/traefik.yml:/traefik.yml:ro
       - ./traefik/acme.json:/acme.json
       - ./traefik/config.yml:/config.yml:ro
-      - traefik-logs:/var/log/traefik
+      - ./crowdsec/traefik-logs:/var/log/traefik
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
@@ -341,7 +341,8 @@ services:
       - ./crowdsec/data:/var/lib/crowdsec/data
       - /var/log:/var/log:ro
       - /var/log/auth.log:/var/log/auth.log:ro
-      - traefik-logs:/var/log/traefik:ro
+      - ./crowdsec/traefik-logs/traefik.log:/logs/traefik.log:ro
+      - ./crowdsec/traefik-logs/access.log:/logs/traefik-access.log:ro
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -402,6 +403,3 @@ networks:
     external: true
   authentik:
     external: true
-
-volumes:
-  traefik-logs:
