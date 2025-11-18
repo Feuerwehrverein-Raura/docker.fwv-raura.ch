@@ -256,9 +256,10 @@ jobs:
           EOF
 
           # Append secrets
-          # NOTE: TRAEFIK_BASIC_AUTH is set manually on server due to GitHub Actions $ escaping issues
-          # Set on server with: admin:$$2y$$05$$mhYyj9lcvx26/7grn21Seuv9tl5D4qgcRu9PFq2OQlEmdLKOX6rJO
-          echo "TRAEFIK_BASIC_AUTH=admin:\$\$2y\$\$05\$\$mhYyj9lcvx26/7grn21Seuv9tl5D4qgcRu9PFq2OQlEmdLKOX6rJO" >> .env
+          # TRAEFIK_BASIC_AUTH from GitHub Secret
+          # Generate with: htpasswd -nbB admin yourpassword | sed 's/\$/\$\$/g'
+          # Store the result (with $$ for Docker Compose) in the GitHub Secret
+          echo "TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}" >> .env
           echo "" >> .env
           echo "# n8n Basic Auth" >> .env
           echo "N8N_BASIC_AUTH_USER=${{ secrets.N8N_BASIC_AUTH_USER }}" >> .env

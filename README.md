@@ -144,18 +144,13 @@ Gehe zu: Repository → Settings → Secrets and variables → Actions → New r
 
 | Secret Name | Beispiel-Wert | Generierung |
 |------------|---------------|-------------|
-| `TRAEFIK_BASIC_AUTH` | *(Siehe Hinweis unten)* | `htpasswd -niB admin` und Passwort eingeben |
+| `TRAEFIK_BASIC_AUTH` | `admin:$$2y$$05$$...` | Siehe Anleitung unten |
 
-⚠️ **WICHTIG - Traefik Basic Auth**:
-- Das `TRAEFIK_BASIC_AUTH` Secret wird **direkt im Workflow hardcoded** gesetzt
-- **Grund**: GitHub Actions kann `$` Zeichen in Secrets nicht korrekt für Docker Compose escapen
-- **Passwort ändern**:
-  1. Neuen Hash generieren: `echo 'dein-neues-passwort' | htpasswd -niB admin`
-  2. Workflow-Datei anpassen (`.github/workflows/deploy.yml` Zeile ~261)
-  3. `$` Zeichen verdoppeln: `$` → `$$` (z.B. `$2y$05$` → `$$2y$$05$$`)
-  4. Commit & Push
-
-Alternativ (wenn GitHub Actions Problem gelöst ist): Du kannst das Secret setzen, aber der Workflow nutzt derzeit den hardcoded Wert.
+**Traefik Basic Auth generieren:**
+1. Hash generieren: `htpasswd -nbB admin dein-passwort`
+2. `$` Zeichen verdoppeln für Docker Compose: `sed 's/\$/\$\$/g'`
+3. Kombiniert: `htpasswd -nbB admin dein-passwort | sed 's/\$/\$\$/g'`
+4. Ergebnis als GitHub Secret `TRAEFIK_BASIC_AUTH` speichern
 
 ##### Nextcloud
 
