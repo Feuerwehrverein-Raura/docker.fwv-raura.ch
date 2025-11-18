@@ -54,6 +54,10 @@ services:
       - NODE_ENV=production
       - WEBHOOK_URL=https://${N8N_DOMAIN}/
       - GENERIC_TIMEZONE=${TIMEZONE}
+      # Disable n8n authentication (using Authentik instead)
+      - N8N_BASIC_AUTH_ACTIVE=false
+      # Trust proxy headers from Authentik
+      - N8N_PROXY_HOPS=1
     volumes:
       - ./n8n/data:/home/node/.n8n
     healthcheck:
@@ -64,16 +68,27 @@ services:
       start_period: 60s
     labels:
       - "traefik.enable=true"
+      # HTTP to HTTPS redirect
       - "traefik.http.routers.n8n.entrypoints=http"
       - "traefik.http.routers.n8n.rule=Host(`${N8N_DOMAIN}`)"
       - "traefik.http.middlewares.n8n-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.n8n.middlewares=n8n-https-redirect"
+      # Webhooks router (no auth)
+      - "traefik.http.routers.n8n-webhooks.entrypoints=https"
+      - "traefik.http.routers.n8n-webhooks.rule=Host(`${N8N_DOMAIN}`) && (PathPrefix(`/webhook`) || PathPrefix(`/webhook-test`))"
+      - "traefik.http.routers.n8n-webhooks.tls=true"
+      - "traefik.http.routers.n8n-webhooks.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.n8n-webhooks.priority=100"
+      - "traefik.http.routers.n8n-webhooks.service=n8n"
+      # Main UI router (with auth)
       - "traefik.http.routers.n8n-secure.entrypoints=https"
       - "traefik.http.routers.n8n-secure.rule=Host(`${N8N_DOMAIN}`)"
       - "traefik.http.routers.n8n-secure.tls=true"
       - "traefik.http.routers.n8n-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.n8n-secure.middlewares=authentik@file"
+      - "traefik.http.routers.n8n-secure.priority=50"
       - "traefik.http.routers.n8n-secure.service=n8n"
+      # Service
       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
       - "traefik.docker.network=proxy"
 
@@ -326,6 +341,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  authentik-proxy:
+    image: ghcr.io/goauthentik/proxy:latest
+    container_name: authentik-proxy
+    restart: unless-stopped
+    networks:
+      - proxy
+      - authentik
+    environment:
+      - AUTHENTIK_HOST=http://authentik-server:9000
+      - AUTHENTIK_INSECURE=true
+      - AUTHENTIK_TOKEN=${AUTHENTIK_PROXY_TOKEN}
+    depends_on:
+      - authentik-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9300/outpost.goauthentik.io/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   crowdsec:
     image: crowdsecurity/crowdsec:latest
