@@ -462,8 +462,6 @@ services:
       - SSO_CLIENT_ID=${VAULTWARDEN_SSO_CLIENT_ID}
       - SSO_CLIENT_SECRET=${VAULTWARDEN_SSO_CLIENT_SECRET}
       - SSO_AUTHORITY=https://auth.fwv-raura.ch/application/o/vaultwarden/
-      # Enable experimental SSO feature in web vault
-      - EXPERIMENTAL_CLIENT_FEATURE_FLAGS=sso
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/alive || exit 1"]
       interval: 30s
