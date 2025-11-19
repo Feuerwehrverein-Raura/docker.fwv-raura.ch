@@ -295,6 +295,8 @@ jobs:
           echo "" >> .env
           echo "# Vaultwarden" >> .env
           echo "VAULTWARDEN_ADMIN_TOKEN=${{ secrets.VAULTWARDEN_ADMIN_TOKEN }}" >> .env
+          echo "VAULTWARDEN_SSO_CLIENT_ID=${{ secrets.VAULTWARDEN_SSO_CLIENT_ID }}" >> .env
+          echo "VAULTWARDEN_SSO_CLIENT_SECRET=${{ secrets.VAULTWARDEN_SSO_CLIENT_SECRET }}" >> .env
 
           # Upload .env file to server
           SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)

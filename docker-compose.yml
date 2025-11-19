@@ -456,6 +456,11 @@ services:
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=warn
       - TZ=${TIMEZONE}
+      # SSO via Authentik
+      - SSO_ENABLED=true
+      - SSO_CLIENT_ID=${VAULTWARDEN_SSO_CLIENT_ID}
+      - SSO_CLIENT_SECRET=${VAULTWARDEN_SSO_CLIENT_SECRET}
+      - SSO_AUTHORITY=https://auth.fwv-raura.ch/application/o/vaultwarden/
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/alive || exit 1"]
       interval: 30s
