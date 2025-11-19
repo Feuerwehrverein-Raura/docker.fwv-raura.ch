@@ -259,7 +259,8 @@ jobs:
           # TRAEFIK_BASIC_AUTH from GitHub Secret
           # Generate with: htpasswd -nbB admin yourpassword | sed 's/\$/\$\$/g'
           # Store the result (with $$ for Docker Compose) in the GitHub Secret
-          echo "TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}" >> .env
+          # Use printf with %s to prevent shell interpretation of $$
+          printf 'TRAEFIK_BASIC_AUTH=%s\n' '${{ secrets.TRAEFIK_BASIC_AUTH }}' >> .env
           echo "" >> .env
           echo "# n8n Basic Auth" >> .env
           echo "N8N_BASIC_AUTH_USER=${{ secrets.N8N_BASIC_AUTH_USER }}" >> .env
