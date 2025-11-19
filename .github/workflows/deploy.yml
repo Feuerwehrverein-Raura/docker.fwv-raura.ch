@@ -250,6 +250,7 @@ jobs:
           N8N_DOMAIN=n8n.fwv-raura.ch
           NEXTCLOUD_DOMAIN=cloud.fwv-raura.ch
           MAILCOW_DOMAIN=mail.fwv-raura.ch
+          VAULTWARDEN_DOMAIN=vault.fwv-raura.ch
 
           # Timezone
           TIMEZONE=Europe/Zurich
@@ -291,6 +292,9 @@ jobs:
           echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
           echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
           echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
+          echo "" >> .env
+          echo "# Vaultwarden" >> .env
+          echo "VAULTWARDEN_ADMIN_TOKEN=${{ secrets.VAULTWARDEN_ADMIN_TOKEN }}" >> .env
 
           # Upload .env file to server
           SERVER_PORT=$(echo "${{ secrets.SERVER_PORT }}" | xargs)
