@@ -456,11 +456,16 @@ services:
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=warn
       - TZ=${TIMEZONE}
-      # SSO via Authentik
+      # SSO via Authentik (Experimental)
       - SSO_ENABLED=true
+      - SSO_ONLY=false
       - SSO_CLIENT_ID=${VAULTWARDEN_SSO_CLIENT_ID}
       - SSO_CLIENT_SECRET=${VAULTWARDEN_SSO_CLIENT_SECRET}
       - SSO_AUTHORITY=https://auth.fwv-raura.ch/application/o/vaultwarden/
+      - SSO_PKCE=true
+      - SSO_AUTHORIZE_ENDPOINT=https://auth.fwv-raura.ch/application/o/authorize/
+      - SSO_TOKEN_ENDPOINT=https://auth.fwv-raura.ch/application/o/token/
+      - SSO_USERINFO_ENDPOINT=https://auth.fwv-raura.ch/application/o/userinfo/
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/alive || exit 1"]
       interval: 30s
