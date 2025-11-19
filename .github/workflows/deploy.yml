@@ -281,6 +281,7 @@ jobs:
           echo "AUTHENTIK_POSTGRESQL_PASSWORD=${{ secrets.AUTHENTIK_POSTGRESQL_PASSWORD }}" >> .env
           echo "AUTHENTIK_POSTGRESQL_USER=authentik" >> .env
           echo "AUTHENTIK_POSTGRESQL_NAME=authentik" >> .env
+          echo "AUTHENTIK_PROXY_TOKEN=${{ secrets.AUTHENTIK_PROXY_TOKEN }}" >> .env
           echo "" >> .env
           echo "# CrowdSec" >> .env
           echo "CROWDSEC_BOUNCER_KEY_TRAEFIK=${{ secrets.CROWDSEC_BOUNCER_KEY_TRAEFIK }}" >> .env
