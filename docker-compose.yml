@@ -82,6 +82,13 @@ services:
       - "traefik.http.routers.n8n-webhooks.tls.certresolver=letsencrypt"
       - "traefik.http.routers.n8n-webhooks.priority=100"
       - "traefik.http.routers.n8n-webhooks.service=n8n"
+      # API router (no auth - uses n8n API key authentication)
+      - "traefik.http.routers.n8n-api.entrypoints=https"
+      - "traefik.http.routers.n8n-api.rule=Host(`${N8N_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.n8n-api.tls=true"
+      - "traefik.http.routers.n8n-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.n8n-api.priority=100"
+      - "traefik.http.routers.n8n-api.service=n8n"
       # Main UI router (with auth)
       - "traefik.http.routers.n8n-secure.entrypoints=https"
       - "traefik.http.routers.n8n-secure.rule=Host(`${N8N_DOMAIN}`)"
