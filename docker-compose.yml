@@ -435,7 +435,7 @@ services:
       - no-new-privileges:true
 
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:testing
     container_name: vaultwarden
     restart: unless-stopped
     networks:
